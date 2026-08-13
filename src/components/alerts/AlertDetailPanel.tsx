@@ -1,6 +1,9 @@
-import { Copy } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Copy, X } from "lucide-react";
 import type { Alert, DispositionStatus } from "../../types/alert";
 import { getDispositionStatus } from "../../types/alert";
+import { updateDisposition } from "../../api/alertsApi";
 
 const statusOptions: DispositionStatus[] = [
   "open",
@@ -9,12 +12,45 @@ const statusOptions: DispositionStatus[] = [
   "escalated",
 ];
 
-export function AlertDetailPanel({ alert }: { alert: Alert }) {
+interface AlertDetailPanelProps {
+  alert: Alert;
+  onClose: () => void;
+}
+
+export function AlertDetailPanel({ alert, onClose }: AlertDetailPanelProps) {
+  const queryClient = useQueryClient();
+  const [status, setStatus] = useState<DispositionStatus>(
+    getDispositionStatus(alert.disposition),
+  );
+  const [notes, setNotes] = useState(alert.disposition?.notes ?? "");
+
+  // Re-sync local state whenever a different alert is selected
+  useEffect(() => {
+    setStatus(getDispositionStatus(alert.disposition));
+    setNotes(alert.disposition?.notes ?? "");
+  }, [alert.id, alert.disposition]);
+
+  const mutation = useMutation({
+    mutationFn: () => updateDisposition(alert.id, { status, notes }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["alerts"] });
+      queryClient.invalidateQueries({ queryKey: ["alert", alert.id] });
+    },
+  });
+
   return (
     <div className="flex h-full min-h-0 w-[400px] shrink-0 flex-col gap-4 overflow-y-auto overflow-x-hidden border-l border-border p-4">
-      <h2 className="font-heading text-lg-heading font-bold text-text-primary">
-        {alert.ruleDescription ?? "Untitled Alert"}
-      </h2>
+      <div className="flex items-start justify-between gap-2">
+        <h2 className="font-heading text-lg-heading font-bold text-text-primary">
+          {alert.ruleDescription ?? "Untitled Alert"}
+        </h2>
+        <button
+          onClick={onClose}
+          className="shrink-0 rounded p-1 text-text-secondary hover:bg-bg-input hover:text-text-primary"
+        >
+          <X className="size-4" />
+        </button>
+      </div>
 
       <div className="shrink-0 rounded border border-border bg-bg-surface p-4">
         <span className="font-mono text-xs-label uppercase tracking-label-tight text-text-secondary">
@@ -88,11 +124,12 @@ export function AlertDetailPanel({ alert }: { alert: Alert }) {
       </div>
 
       <div className="shrink-0">
-        <label className="font-mono text-xs-label uppercase tracking-label-tight text-text-secondary">
+        <label className="font-mono text-xs-label font-bold uppercase tracking-label-tight text-text-secondary">
           Disposition Status
         </label>
         <select
-          defaultValue={getDispositionStatus(alert.disposition)}
+          value={status}
+          onChange={(e) => setStatus(e.target.value as DispositionStatus)}
           className="mt-1 w-full rounded border border-border bg-bg-input px-3 py-2 font-mono text-sm text-text-primary"
         >
           {statusOptions.map((s) => (
@@ -105,12 +142,23 @@ export function AlertDetailPanel({ alert }: { alert: Alert }) {
 
       <textarea
         placeholder="Add investigation notes..."
-        defaultValue={alert.disposition?.notes ?? ""}
+        value={notes}
+        onChange={(e) => setNotes(e.target.value)}
         className="h-24 w-full shrink-0 resize-none rounded border border-border bg-bg-input p-3 font-mono text-sm text-text-primary placeholder:text-text-placeholder"
       />
 
-      <button className="shrink-0 rounded bg-accent py-2.5 font-heading text-sm font-semibold text-white">
-        Update Alert
+      {mutation.isError && (
+        <p className="shrink-0 font-mono text-xs text-critical">
+          Failed to update. Please try again.
+        </p>
+      )}
+
+      <button
+        onClick={() => mutation.mutate()}
+        disabled={mutation.isPending}
+        className="shrink-0 rounded bg-accent py-2.5 font-heading text-sm font-semibold text-white disabled:opacity-60"
+      >
+        {mutation.isPending ? "Updating..." : "Update Alert"}
       </button>
     </div>
   );

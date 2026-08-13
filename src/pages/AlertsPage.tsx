@@ -68,7 +68,12 @@ export function AlertsPage() {
         )}
       </div>
 
-      {selectedAlert && <AlertDetailPanel alert={selectedAlert} />}
+      {selectedAlert && (
+        <AlertDetailPanel
+          alert={selectedAlert}
+          onClose={() => setSelectedAlertId(null)}
+        />
+      )}
     </div>
   );
 }

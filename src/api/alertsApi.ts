@@ -14,3 +14,15 @@ export async function fetchAlertById(id: string): Promise<Alert> {
     const { data } = await apiClient.get<Alert>(`/alerts/${id}`);
     return data;
 }
+
+export interface UpdateDispositionPayload {
+  status: string;
+  notes?: string;
+}
+
+export async function updateDisposition(
+  alertId: string,
+  payload: UpdateDispositionPayload,
+): Promise<void> {
+  await apiClient.post(`/alerts/${alertId}/disposition`, payload);
+}
