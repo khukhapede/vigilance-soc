@@ -1,5 +1,5 @@
 interface TacticBarProps {
-  code: string;
+  code?: string;
   label: string;
   count: number;
   maxCount: number;
@@ -12,7 +12,7 @@ export function TacticBar({ code, label, count, maxCount }: TacticBarProps) {
     <div className="flex flex-col gap-1">
       <div className="flex items-center justify-between">
         <span className="font-mono text-xs text-text-primary">
-          {code} - {label}
+          {code ? `${code} - ${label}` : label}
         </span>
         <span className="font-mono text-xs text-text-secondary">
           {count.toLocaleString()}
